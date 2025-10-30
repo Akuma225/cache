@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://npm.pkg.github.com'
+          scope: '@akuma225'
           
       - name: Install dependencies
         run: |
@@ -33,6 +34,8 @@ jobs:
             echo "package-lock.json non trouvé, génération avec npm install"
             npm install
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.PULL_PACKAGE_TOKEN }}
         
       - name: Build package
         run: npm run build
