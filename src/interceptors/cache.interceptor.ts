@@ -1,6 +1,7 @@
 import {
     CallHandler,
     ExecutionContext,
+    Logger,
     Injectable,
     NestInterceptor,
 } from '@nestjs/common';
@@ -19,10 +20,13 @@ interface HttpRequestLike {
 
 @Injectable()
 export class AkumaCacheInterceptor implements NestInterceptor {
+    private readonly logger = new Logger(AkumaCacheInterceptor.name);
+
     constructor(
         private readonly redisService: RedisCacheService,
         private readonly ttl: number = 3600,
         private readonly cachePrefix?: string,
+        private readonly verbose: boolean = false,
     ) {}
 
     async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
@@ -32,9 +36,12 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         try {
             const cachedResponse = await this.redisService.get(key);
             if (cachedResponse) {
+                this.debug(`Cache hit for key: ${key}`);
                 return of(JSON.parse(cachedResponse));
             }
+            this.debug(`Cache miss for key: ${key}`);
         } catch {
+            this.debug(`Cache read failed for key: ${key}`);
             // Fail-open: continue request flow if cache read fails.
         }
 
@@ -44,8 +51,14 @@ export class AkumaCacheInterceptor implements NestInterceptor {
                     const payload = JSON.stringify(response);
                     void this.redisService
                         .set(key, payload, this.ttl)
-                        .catch(() => undefined);
+                        .then(() => {
+                            this.debug(`Cache set for key: ${key} (ttl: ${this.ttl}s)`);
+                        })
+                        .catch(() => {
+                            this.debug(`Cache set failed for key: ${key}`);
+                        });
                 } catch {
+                    this.debug(`Response serialization failed for key: ${key}`);
                     // Ignore non-serializable responses for cache storage.
                 }
             }),
@@ -82,5 +95,11 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         }
 
         return baseKey;
+    }
+
+    private debug(message: string): void {
+        if (this.verbose) {
+            this.logger.log(message);
+        }
     }
 }

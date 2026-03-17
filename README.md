@@ -29,6 +29,7 @@ import { AkumaCacheModule } from '@akuma225/cache';
       // db: 0,
       // url: 'redis://localhost:6379',
       defaultTtl: 3600,
+      verbose: false,
     }),
   ],
 })
@@ -154,10 +155,20 @@ async updateUser() {
 | `db` | `number` | `undefined` |
 | `url` | `string` | `undefined` |
 | `defaultTtl` | `number` | `3600` |
+| `verbose` | `boolean` | `false` |
 
 ### `AkumaCacheModule.register(options)`
 
 Version non-globale du module (meme options que `forRoot`).
+
+### Logs verbose
+
+Quand `verbose: true`, le module affiche des logs NestJS pour:
+
+- connexions Redis (ou reconnexions),
+- `cache hit` / `cache miss`,
+- ecritures cache (`set`) et erreurs de lecture/ecriture,
+- invalidation par pattern avec le nombre de cles supprimees.
 
 ## Scripts
 

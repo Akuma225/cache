@@ -8,6 +8,7 @@ export interface AkumaCacheOptions {
     db?: number;
     url?: string;
     defaultTtl?: number;
+    verbose?: boolean;
 }
 
 export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
@@ -16,6 +17,7 @@ export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> 
 }
 
 export const AKUMA_CACHE_OPTIONS = 'AKUMA_CACHE_OPTIONS';
+export const CACHE_VERBOSE = 'CACHE_VERBOSE';
 
 @Module({})
 export class AkumaCacheModule {
@@ -26,7 +28,7 @@ export class AkumaCacheModule {
                 provide: AKUMA_CACHE_OPTIONS,
                 useValue: options,
             }),
-            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL'],
+            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
         };
     }
 
@@ -47,7 +49,7 @@ export class AkumaCacheModule {
                 useFactory: options.useFactory,
                 inject: options.inject || [],
             }),
-            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL'],
+            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
             global: true,
         };
     }
@@ -59,6 +61,11 @@ export class AkumaCacheModule {
             {
                 provide: 'CACHE_DEFAULT_TTL',
                 useFactory: (options: AkumaCacheOptions) => options.defaultTtl || 3600,
+                inject: [AKUMA_CACHE_OPTIONS],
+            },
+            {
+                provide: CACHE_VERBOSE,
+                useFactory: (options: AkumaCacheOptions) => options.verbose || false,
                 inject: [AKUMA_CACHE_OPTIONS],
             },
         ];

@@ -1,16 +1,19 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { createClient, RedisClientType } from 'redis';
 import { AKUMA_CACHE_OPTIONS, AkumaCacheOptions } from '../akuma-cache.module';
 
 @Injectable()
 export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     private readonly client: RedisClientType;
+    private readonly logger = new Logger(RedisCacheService.name);
+    private readonly verbose: boolean;
 
     constructor(
         @Optional()
         @Inject(AKUMA_CACHE_OPTIONS)
         private readonly options: AkumaCacheOptions = {},
     ) {
+        this.verbose = options.verbose || false;
         this.client = createClient(
             options.url
                 ? { url: options.url, database: options.db }
@@ -28,12 +31,14 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     async onModuleInit(): Promise<void> {
         if (!this.client.isOpen) {
             await this.client.connect();
+            this.debug('Redis connection opened');
         }
     }
 
     async onModuleDestroy(): Promise<void> {
         if (this.client.isOpen) {
             await this.client.quit();
+            this.debug('Redis connection closed');
         }
     }
 
@@ -51,27 +56,42 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         await this.client.set(key, value);
     }
 
-    async delByPattern(pattern: string): Promise<void> {
+    async delByPattern(pattern: string): Promise<number> {
         await this.ensureConnected();
         const keysToDelete: string[] = [];
 
-        for await (const key of this.client.scanIterator({
+        for await (const scanResult of this.client.scanIterator({
             MATCH: pattern,
             COUNT: 100,
         })) {
-            if (typeof key === 'string') {
-                keysToDelete.push(key);
+            if (Array.isArray(scanResult)) {
+                keysToDelete.push(...scanResult);
+                continue;
+            }
+
+            if (typeof scanResult === 'string') {
+                keysToDelete.push(scanResult);
             }
         }
 
         if (keysToDelete.length > 0) {
             await this.client.del(keysToDelete);
         }
+
+        this.debug(`Invalidation pattern "${pattern}" deleted ${keysToDelete.length} key(s)`);
+        return keysToDelete.length;
     }
 
     private async ensureConnected(): Promise<void> {
         if (!this.client.isOpen) {
             await this.client.connect();
+            this.debug('Redis connection reopened');
+        }
+    }
+
+    private debug(message: string): void {
+        if (this.verbose) {
+            this.logger.log(message);
         }
     }
 }
