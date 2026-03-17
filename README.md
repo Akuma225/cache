@@ -127,11 +127,32 @@ export class UsersController {
 
 `patterns` est un tableau de patterns Redis utilises pour supprimer les cles correspondantes.
 
-Exemples de patterns:
+Important: ce sont des **patterns Redis (glob)**, pas des regex JavaScript.
 
-- `users*` : invalide toutes les cles commencant par `users`
-- `production-GET-/users*` : invalide un namespace precis
-- `order-*` : invalide toutes les cles liees aux commandes
+### Syntaxe des patterns d'invalidation
+
+- `*` : zero ou plusieurs caracteres  
+  ex: `users*`, `*users*`
+- `?` : exactement un caractere  
+  ex: `user-?` matche `user-1` mais pas `user-10`
+- `[abc]` : un caractere parmi la liste  
+  ex: `status-[ad]*` matche `status-a...` ou `status-d...`
+- `[a-z]` : un caractere dans un intervalle  
+  ex: `item-[0-9]*`
+
+### Exemples utiles
+
+- `users*` : invalide toutes les cles qui commencent par `users`
+- `*users*` : invalide toutes les cles qui contiennent `users` (n'importe ou)
+- `production-GET-/reference-data/sectors*` : invalide un namespace API precis
+- `report-*-2026*` : invalide une famille de cles versionnees/prefixees
+
+### Bonnes pratiques
+
+- Utiliser des prefixes coherents dans `cachePrefix` pour cibler facilement (`public-`, `admin-`, etc.).
+- Preferer des patterns specifiques pour eviter des suppressions trop larges.
+- Si vous utilisez `@Cacheable({ cachePrefix: 'public-' })`, invalidez avec des patterns qui incluent ce prefixe, par exemple `public-*`.
+- Pour invalider une ressource "partout dans la cle", utiliser `*terme*` (ex: `*sectors*`).
 
 Exemple avec plusieurs patterns:
 
