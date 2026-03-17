@@ -11,6 +11,7 @@ jobs:
     
     permissions:
       contents: write
+      id-token: write
     
     steps:
       - name: Checkout code
@@ -63,7 +64,13 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
           git push
           
+      - name: Verify npm authentication
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish to npmjs
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

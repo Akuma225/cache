@@ -101,7 +101,12 @@ npm run lint
 
 ## Publication npm
 
-Le package est publie sur npmjs.org via le workflow GitHub Actions avec `NPM_TOKEN`.
+Le package est publie sur npmjs.org via GitHub Actions.
+
+Important pour eviter l'erreur `E403` avec 2FA:
+
+- Soit configurer le package npm en **trusted publishing** pour GitHub Actions.
+- Soit utiliser un token npm **Automation** ou **Granular avec bypass 2FA pour publish** dans le secret `NPM_TOKEN`.
 
 ## Licence
 
