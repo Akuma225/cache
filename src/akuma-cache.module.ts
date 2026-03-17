@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module, ModuleMetadata, Provider } from '@nestjs/common';
 import { RedisCacheService } from './services/redis-cache.service';
 
 export interface AkumaCacheOptions {
@@ -10,26 +10,22 @@ export interface AkumaCacheOptions {
     defaultTtl?: number;
 }
 
+export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
+    inject?: any[];
+    useFactory: (...args: any[]) => Promise<AkumaCacheOptions> | AkumaCacheOptions;
+}
+
 export const AKUMA_CACHE_OPTIONS = 'AKUMA_CACHE_OPTIONS';
 
 @Module({})
 export class AkumaCacheModule {
     static register(options: AkumaCacheOptions = {}): DynamicModule {
-        const { defaultTtl } = options;
-
         return {
             module: AkumaCacheModule,
-            providers: [
-                {
-                    provide: AKUMA_CACHE_OPTIONS,
-                    useValue: options,
-                },
-                RedisCacheService,
-                {
-                    provide: 'CACHE_DEFAULT_TTL',
-                    useValue: defaultTtl || 3600,
-                },
-            ],
+            providers: this.createProviders({
+                provide: AKUMA_CACHE_OPTIONS,
+                useValue: options,
+            }),
             exports: [RedisCacheService, 'CACHE_DEFAULT_TTL'],
         };
     }
@@ -40,5 +36,31 @@ export class AkumaCacheModule {
             ...moduleRef,
             global: true,
         };
+    }
+
+    static forRootAsync(options: AkumaCacheAsyncOptions): DynamicModule {
+        return {
+            module: AkumaCacheModule,
+            imports: options.imports || [],
+            providers: this.createProviders({
+                provide: AKUMA_CACHE_OPTIONS,
+                useFactory: options.useFactory,
+                inject: options.inject || [],
+            }),
+            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL'],
+            global: true,
+        };
+    }
+
+    private static createProviders(optionsProvider: Provider): Provider[] {
+        return [
+            optionsProvider,
+            RedisCacheService,
+            {
+                provide: 'CACHE_DEFAULT_TTL',
+                useFactory: (options: AkumaCacheOptions) => options.defaultTtl || 3600,
+                inject: [AKUMA_CACHE_OPTIONS],
+            },
+        ];
     }
 }

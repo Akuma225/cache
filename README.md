@@ -35,6 +35,32 @@ import { AkumaCacheModule } from '@akuma225/cache';
 export class AppModule {}
 ```
 
+### Configuration asynchrone (`forRootAsync`)
+
+```ts
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AkumaCacheModule, AkumaCacheOptions } from '@akuma225/cache';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    AkumaCacheModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService): AkumaCacheOptions => {
+        const config = configService.get<AkumaCacheOptions>('cache');
+        if (!config) {
+          throw new Error('Configuration cache manquante');
+        }
+        return config;
+      },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
 ## Utilisation
 
 ### `@Cacheable()`
