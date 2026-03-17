@@ -65,7 +65,6 @@ jobs:
           git push
           
       - name: Verify npm authentication
-        if: ${{ secrets.NPM_TOKEN != '' }}
         run: npm whoami
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
