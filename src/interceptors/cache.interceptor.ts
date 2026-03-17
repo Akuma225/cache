@@ -1,22 +1,21 @@
 import {
     CallHandler,
     ExecutionContext,
-    Inject,
     Injectable,
     NestInterceptor,
-    Optional,
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { FastifyRequest } from 'fastify';
-import { AkumaRedisService } from '@akuma225/redis-adapter';
+import { RedisCacheService } from '../services/redis-cache.service';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class AkumaCacheInterceptor implements NestInterceptor {
     constructor(
-        @Inject(AkumaRedisService) private readonly redisService: AkumaRedisService,
-        @Optional() @Inject('CACHE_DEFAULT_TTL') private readonly ttl: number = 3600
+        private readonly redisService: RedisCacheService,
+        private readonly ttl: number = 3600,
+        private readonly cachePrefix?: string,
     ) {}
 
     async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
@@ -39,6 +38,10 @@ export class AkumaCacheInterceptor implements NestInterceptor {
     }
 
     private generateKey(request: FastifyRequest): string {
+        if (this.cachePrefix) {
+            return `${this.cachePrefix}${Date.now()}`;
+        }
+
         const method = request.method;
         const url = request.url;
         const query = request.query || {};

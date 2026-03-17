@@ -1,14 +1,16 @@
 import { DynamicModule, Module } from '@nestjs/common';
-import { AkumaRedisModule, AkumaRedisService } from '@akuma225/redis-adapter';
-import { AkumaCacheInterceptor } from './interceptors/cache.interceptor';
-import { AkumaCacheInvalidationInterceptor } from './interceptors/cache-invalidation.interceptor';
+import { RedisCacheService } from './services/redis-cache.service';
 
 export interface AkumaCacheOptions {
     host?: string;
     port?: number;
     password?: string;
+    db?: number;
+    url?: string;
     defaultTtl?: number;
 }
+
+export const AKUMA_CACHE_OPTIONS = 'AKUMA_CACHE_OPTIONS';
 
 @Module({})
 export class AkumaCacheModule {
@@ -17,14 +19,18 @@ export class AkumaCacheModule {
 
         return {
             module: AkumaCacheModule,
-            imports: [AkumaRedisModule],
             providers: [
+                {
+                    provide: AKUMA_CACHE_OPTIONS,
+                    useValue: options,
+                },
+                RedisCacheService,
                 {
                     provide: 'CACHE_DEFAULT_TTL',
                     useValue: defaultTtl || 3600,
                 },
             ],
-            exports: [AkumaRedisModule],
+            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL'],
         };
     }
 

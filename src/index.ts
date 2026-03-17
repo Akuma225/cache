@@ -3,3 +3,4 @@ export * from './interceptors/cache.interceptor';
 export * from './interceptors/cache-invalidation.interceptor';
 export * from './decorators/cacheable.decorator';
 export * from './decorators/invalidate-cache.decorator';
+export * from './services/redis-cache.service';

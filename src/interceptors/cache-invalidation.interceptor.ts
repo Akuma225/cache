@@ -1,19 +1,18 @@
 import {
     CallHandler,
     ExecutionContext,
-    Inject,
     Injectable,
     NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { AkumaRedisService } from '@akuma225/redis-adapter';
+import { RedisCacheService } from '../services/redis-cache.service';
 
 @Injectable()
 export class AkumaCacheInvalidationInterceptor implements NestInterceptor {
     constructor(
-        @Inject(AkumaRedisService) private readonly redisService: AkumaRedisService,
-        private readonly patterns: string[]
+        private readonly redisService: RedisCacheService,
+        private readonly patterns: string[],
     ) {}
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
