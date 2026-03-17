@@ -6,9 +6,16 @@ import {
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { FastifyRequest } from 'fastify';
 import { RedisCacheService } from '../services/redis-cache.service';
 import * as crypto from 'crypto';
+
+interface HttpRequestLike {
+    method: string;
+    url: string;
+    query?: unknown;
+    params?: unknown;
+    body?: unknown;
+}
 
 @Injectable()
 export class AkumaCacheInterceptor implements NestInterceptor {
@@ -19,29 +26,33 @@ export class AkumaCacheInterceptor implements NestInterceptor {
     ) {}
 
     async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
-        const request = context.switchToHttp().getRequest<FastifyRequest>();
+        const request = context.switchToHttp().getRequest<HttpRequestLike>();
         const key = this.generateKey(request);
 
-        console.log(`Cache interceptor: ${key}`);
-
-        const cachedResponse = await this.redisService.get(key);
-        if (cachedResponse) {
-            console.log(`Cache hit: ${key}`);
-            return of(JSON.parse(cachedResponse));
+        try {
+            const cachedResponse = await this.redisService.get(key);
+            if (cachedResponse) {
+                return of(JSON.parse(cachedResponse));
+            }
+        } catch {
+            // Fail-open: continue request flow if cache read fails.
         }
 
         return next.handle().pipe(
-            tap(async (response) => {
-                await this.redisService.set(key, JSON.stringify(response), this.ttl);
+            tap((response) => {
+                try {
+                    const payload = JSON.stringify(response);
+                    void this.redisService
+                        .set(key, payload, this.ttl)
+                        .catch(() => undefined);
+                } catch {
+                    // Ignore non-serializable responses for cache storage.
+                }
             }),
         );
     }
 
-    private generateKey(request: FastifyRequest): string {
-        if (this.cachePrefix) {
-            return `${this.cachePrefix}${Date.now()}`;
-        }
-
+    private generateKey(request: HttpRequestLike): string {
         const method = request.method;
         const url = request.url;
         const query = request.query || {};
@@ -53,18 +64,23 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         const namespace = `${env}-${method.toUpperCase()}-${resource}`;
 
         const queryHash = crypto
-            .createHash('md5')
+            .createHash('sha256')
             .update(JSON.stringify(query))
             .digest('hex');
         const paramsHash = crypto
-            .createHash('md5')
+            .createHash('sha256')
             .update(JSON.stringify(params))
             .digest('hex');
         const bodyHash = crypto
-            .createHash('md5')
+            .createHash('sha256')
             .update(JSON.stringify(body))
             .digest('hex');
 
-        return `${namespace}-${bodyHash}-${paramsHash}-${queryHash}`;
+        const baseKey = `${namespace}-${bodyHash}-${paramsHash}-${queryHash}`;
+        if (this.cachePrefix) {
+            return `${this.cachePrefix}${baseKey}`;
+        }
+
+        return baseKey;
     }
 }

@@ -17,12 +17,19 @@ export class AkumaCacheInvalidationInterceptor implements NestInterceptor {
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
         return next.handle().pipe(
-            tap(async () => {
-                for (const pattern of this.patterns) {
-                    console.log(`Invalidating cache for pattern: ${pattern}`);
-                    await this.redisService.delByPattern(pattern);
-                }
+            tap(() => {
+                void this.invalidatePatterns();
             }),
         );
+    }
+
+    private async invalidatePatterns(): Promise<void> {
+        for (const pattern of this.patterns) {
+            try {
+                await this.redisService.delByPattern(pattern);
+            } catch {
+                // Fail-open: do not break endpoint response on invalidation failure.
+            }
+        }
     }
 }

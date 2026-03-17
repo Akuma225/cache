@@ -56,7 +56,29 @@ export class UsersController {
 Options disponibles:
 
 - `ttl?: number` - TTL de la cle en secondes
-- `cachePrefix?: string` - si renseigne, la cle est generee au format `cachePrefix + Date.now()`
+- `cachePrefix?: string` - si renseigne, le prefix est ajoute devant la cle standard
+
+#### Options detaillees de `@Cacheable(options)`
+
+| Option | Type | Defaut | Effet |
+| --- | --- | --- | --- |
+| `ttl` | `number` | `defaultTtl` du module | Duree de vie de l'entree cache en secondes. |
+| `cachePrefix` | `string` | `undefined` | Prefixe la cle standard generee par le module. |
+
+Comportement de `cachePrefix`:
+
+- La structure de cle reste identique (env, methode, url, hash body/params/query).
+- Seul un prefixe est ajoute devant, ce qui permet de segmenter les cles par domaine/contexte.
+
+Exemple:
+
+```ts
+@Get('report')
+@Cacheable({ ttl: 120, cachePrefix: 'report-' })
+async report() {
+  return this.reportService.generate();
+}
+```
 
 ### `@InvalidateCache()`
 
@@ -71,6 +93,26 @@ export class UsersController {
   async createUser(@Body() payload: any) {
     return this.usersService.create(payload);
   }
+}
+```
+
+#### Options detaillees de `@InvalidateCache(patterns)`
+
+`patterns` est un tableau de patterns Redis utilises pour supprimer les cles correspondantes.
+
+Exemples de patterns:
+
+- `users*` : invalide toutes les cles commencant par `users`
+- `production-GET-/users*` : invalide un namespace precis
+- `order-*` : invalide toutes les cles liees aux commandes
+
+Exemple avec plusieurs patterns:
+
+```ts
+@Post(':id')
+@InvalidateCache(['users*', 'profile-*'])
+async updateUser() {
+  return this.usersService.update();
 }
 ```
 

@@ -53,9 +53,19 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
 
     async delByPattern(pattern: string): Promise<void> {
         await this.ensureConnected();
-        const keys = await this.client.keys(pattern);
-        if (keys.length > 0) {
-            await this.client.del(keys);
+        const keysToDelete: string[] = [];
+
+        for await (const key of this.client.scanIterator({
+            MATCH: pattern,
+            COUNT: 100,
+        })) {
+            if (typeof key === 'string') {
+                keysToDelete.push(key);
+            }
+        }
+
+        if (keysToDelete.length > 0) {
+            await this.client.del(keysToDelete);
         }
     }
 
