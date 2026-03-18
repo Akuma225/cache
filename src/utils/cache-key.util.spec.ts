@@ -84,6 +84,40 @@ describe('cache-key util', () => {
         expect(key).toBeNull();
     });
 
+    it("force un cache global quand scope='global' meme si tenantAware=true", () => {
+        const key = buildCacheKey(
+            {
+                ...baseRequest,
+                headers: { 'x-tenant-id': 'user1' },
+            },
+            {
+                scope: 'global',
+                moduleOptions: {
+                    tenantAware: true,
+                },
+            },
+        );
+
+        expect(key).not.toContain('tenant:');
+    });
+
+    it("force un cache tenant quand scope='tenant' meme si tenantAware=false", () => {
+        const key = buildCacheKey(
+            {
+                ...baseRequest,
+                headers: { 'x-tenant-id': 'user1' },
+            },
+            {
+                scope: 'tenant',
+                moduleOptions: {
+                    tenantAware: false,
+                },
+            },
+        );
+
+        expect(key).toContain('tenant:user1:');
+    });
+
     it("scope l'invalidation sur le tenant courant en mode tenant", () => {
         const request: HttpRequestLike = {
             ...baseRequest,

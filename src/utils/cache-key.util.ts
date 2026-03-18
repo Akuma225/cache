@@ -15,6 +15,7 @@ interface BuildCacheKeyOptions {
     cachePrefix?: string;
     moduleOptions?: AkumaCacheOptions;
     tenantResolver?: TenantResolver;
+    scope?: 'tenant' | 'global';
 }
 
 interface ScopeInvalidationPatternOptions {
@@ -27,7 +28,7 @@ export function buildCacheKey(request: HttpRequestLike, options: BuildCacheKeyOp
     const moduleOptions = options.moduleOptions ?? {};
     const baseKey = buildBaseCacheKey(request);
     const scopedBaseKey = options.cachePrefix ? `${options.cachePrefix}${baseKey}` : baseKey;
-    const shouldScopeByTenant = shouldUseTenantScope(moduleOptions, options.tenantResolver);
+    const shouldScopeByTenant = shouldUseTenantScope(moduleOptions, options.tenantResolver, options.scope);
 
     if (!shouldScopeByTenant) {
         return scopedBaseKey;
@@ -124,7 +125,19 @@ export function resolveTenantId(
     return undefined;
 }
 
-function shouldUseTenantScope(moduleOptions: AkumaCacheOptions, tenantResolver?: TenantResolver): boolean {
+function shouldUseTenantScope(
+    moduleOptions: AkumaCacheOptions,
+    tenantResolver?: TenantResolver,
+    scope?: 'tenant' | 'global',
+): boolean {
+    if (scope === 'global') {
+        return false;
+    }
+
+    if (scope === 'tenant') {
+        return true;
+    }
+
     return Boolean(moduleOptions.tenantAware || moduleOptions.tenantResolver || tenantResolver);
 }
 

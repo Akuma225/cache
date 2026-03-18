@@ -6,6 +6,7 @@ import { RedisCacheService } from '../services/redis-cache.service';
 export interface CacheableOptions {
     ttl?: number;
     cachePrefix?: string;
+    scope?: 'tenant' | 'global';
     tenantResolver?: TenantResolver;
 }
 
@@ -17,7 +18,15 @@ export function Cacheable(options: CacheableOptions = {}) {
             @Optional() @Inject(CACHE_VERBOSE) verbose: boolean = false,
             @Optional() @Inject(AKUMA_CACHE_OPTIONS) moduleOptions: AkumaCacheOptions = {},
         ) {
-            super(redisService, options.ttl || defaultTtl, options.cachePrefix, verbose, moduleOptions, options.tenantResolver);
+            super(
+                redisService,
+                options.ttl || defaultTtl,
+                options.cachePrefix,
+                options.scope,
+                verbose,
+                moduleOptions,
+                options.tenantResolver,
+            );
         }
     }
     return applyDecorators(

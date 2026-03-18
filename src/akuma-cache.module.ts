@@ -40,7 +40,7 @@ export class AkumaCacheModule {
                 provide: AKUMA_CACHE_OPTIONS,
                 useValue: options,
             }),
-            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
+            exports: [RedisCacheService, AKUMA_CACHE_OPTIONS, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
         };
     }
 
@@ -61,7 +61,7 @@ export class AkumaCacheModule {
                 useFactory: options.useFactory,
                 inject: options.inject || [],
             }),
-            exports: [RedisCacheService, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
+            exports: [RedisCacheService, AKUMA_CACHE_OPTIONS, 'CACHE_DEFAULT_TTL', CACHE_VERBOSE],
             global: true,
         };
     }

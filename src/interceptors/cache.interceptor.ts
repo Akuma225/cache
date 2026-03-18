@@ -19,6 +19,7 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         private readonly redisService: RedisCacheService,
         private readonly ttl: number = 3600,
         private readonly cachePrefix?: string,
+        private readonly scope?: 'tenant' | 'global',
         private readonly verbose: boolean = false,
         private readonly moduleOptions: AkumaCacheOptions = {},
         private readonly tenantResolver?: TenantResolver,
@@ -67,6 +68,7 @@ export class AkumaCacheInterceptor implements NestInterceptor {
     private generateKey(request: HttpRequestLike): string | null {
         return buildCacheKey(request, {
             cachePrefix: this.cachePrefix,
+            scope: this.scope,
             moduleOptions: this.moduleOptions,
             tenantResolver: this.tenantResolver,
         });

@@ -121,6 +121,7 @@ Options disponibles:
 
 - `ttl?: number` - TTL de la cle en secondes
 - `cachePrefix?: string` - si renseigne, le prefix est ajoute devant la cle standard
+- `scope?: 'tenant' | 'global'` - force le scope de cache pour cette route (sinon suit la config module)
 - `tenantResolver?: (request) => string | undefined` - override local pour resoudre le tenant
 
 #### Options detaillees de `@Cacheable(options)`
@@ -129,6 +130,7 @@ Options disponibles:
 | --- | --- | --- | --- |
 | `ttl` | `number` | `defaultTtl` du module | Duree de vie de l'entree cache en secondes. |
 | `cachePrefix` | `string` | `undefined` | Prefixe la cle standard generee par le module. |
+| `scope` | `'tenant' \| 'global'` | `undefined` | Override du scope par route. Si `undefined`, la route suit `tenantAware` module. |
 | `tenantResolver` | `(request) => string \| undefined` | `undefined` | Resolver local prioritaire pour construire une cle tenant-aware. |
 
 Comportement de `cachePrefix`:
@@ -313,10 +315,24 @@ Exemple avec resolver local sur un endpoint:
 @Get('profile')
 @Cacheable({
   ttl: 120,
+  scope: 'tenant',
   tenantResolver: (request: any) => request.user?.tenantId,
 })
 async getProfile() {
   return this.profileService.get();
+}
+```
+
+Exemple pour forcer un cache global sur une route meme si `tenantAware` est active au module:
+
+```ts
+@Get('public-catalog')
+@Cacheable({
+  ttl: 300,
+  scope: 'global',
+})
+async getPublicCatalog() {
+  return this.catalogService.list();
 }
 ```
 
