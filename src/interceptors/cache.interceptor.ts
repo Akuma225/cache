@@ -8,15 +8,8 @@ import {
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { RedisCacheService } from '../services/redis-cache.service';
-import * as crypto from 'crypto';
-
-interface HttpRequestLike {
-    method: string;
-    url: string;
-    query?: unknown;
-    params?: unknown;
-    body?: unknown;
-}
+import { AkumaCacheOptions, TenantResolver } from '../akuma-cache.module';
+import { buildCacheKey, HttpRequestLike } from '../utils/cache-key.util';
 
 @Injectable()
 export class AkumaCacheInterceptor implements NestInterceptor {
@@ -27,11 +20,17 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         private readonly ttl: number = 3600,
         private readonly cachePrefix?: string,
         private readonly verbose: boolean = false,
+        private readonly moduleOptions: AkumaCacheOptions = {},
+        private readonly tenantResolver?: TenantResolver,
     ) {}
 
     async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
         const request = context.switchToHttp().getRequest<HttpRequestLike>();
         const key = this.generateKey(request);
+        if (!key) {
+            this.debug('Cache skipped: tenant resolution failed with reject fallback');
+            return next.handle();
+        }
 
         try {
             const cachedResponse = await this.redisService.get(key);
@@ -65,36 +64,12 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         );
     }
 
-    private generateKey(request: HttpRequestLike): string {
-        const method = request.method;
-        const url = request.url;
-        const query = request.query || {};
-        const params = request.params || {};
-        const body = request.body || {};
-        const env = process.env.NODE_ENV || 'development';
-
-        const resource = url || 'root';
-        const namespace = `${env}-${method.toUpperCase()}-${resource}`;
-
-        const queryHash = crypto
-            .createHash('sha256')
-            .update(JSON.stringify(query))
-            .digest('hex');
-        const paramsHash = crypto
-            .createHash('sha256')
-            .update(JSON.stringify(params))
-            .digest('hex');
-        const bodyHash = crypto
-            .createHash('sha256')
-            .update(JSON.stringify(body))
-            .digest('hex');
-
-        const baseKey = `${namespace}-${bodyHash}-${paramsHash}-${queryHash}`;
-        if (this.cachePrefix) {
-            return `${this.cachePrefix}${baseKey}`;
-        }
-
-        return baseKey;
+    private generateKey(request: HttpRequestLike): string | null {
+        return buildCacheKey(request, {
+            cachePrefix: this.cachePrefix,
+            moduleOptions: this.moduleOptions,
+            tenantResolver: this.tenantResolver,
+        });
     }
 
     private debug(message: string): void {

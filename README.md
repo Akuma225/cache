@@ -121,6 +121,7 @@ Options disponibles:
 
 - `ttl?: number` - TTL de la cle en secondes
 - `cachePrefix?: string` - si renseigne, le prefix est ajoute devant la cle standard
+- `tenantResolver?: (request) => string | undefined` - override local pour resoudre le tenant
 
 #### Options detaillees de `@Cacheable(options)`
 
@@ -128,6 +129,7 @@ Options disponibles:
 | --- | --- | --- | --- |
 | `ttl` | `number` | `defaultTtl` du module | Duree de vie de l'entree cache en secondes. |
 | `cachePrefix` | `string` | `undefined` | Prefixe la cle standard generee par le module. |
+| `tenantResolver` | `(request) => string \| undefined` | `undefined` | Resolver local prioritaire pour construire une cle tenant-aware. |
 
 Comportement de `cachePrefix`:
 
@@ -201,6 +203,21 @@ async updateUser() {
 }
 ```
 
+Options de `@InvalidateCache(patterns, options)`:
+
+- `scope?: 'tenant' | 'global'` (defaut: `tenant`)
+- `tenantResolver?: (request) => string | undefined`
+
+Exemple invalidation globale explicite:
+
+```ts
+@Post('admin/rebuild-cache')
+@InvalidateCache(['users*'], { scope: 'global' })
+async rebuildAllUsersCache() {
+  return { ok: true };
+}
+```
+
 ### Utilisation directe dans un service NestJS
 
 En plus des decorateurs, vous pouvez injecter `RedisCacheService` et utiliser des methodes directes:
@@ -246,6 +263,11 @@ Methodes disponibles:
 | `maxInitRetries` | `number` | `5` |
 | `retryDelayMs` | `number` | `250` |
 | `failFastOnInit` | `boolean` | `false` |
+| `tenantAware` | `boolean` | `false` |
+| `tenantResolver` | `(request) => string \| undefined` | `undefined` |
+| `tenantHeaderName` | `string` | `'x-tenant-id'` |
+| `tenantClaimPath` | `string` | `'tenantId'` |
+| `tenantFallback` | `'global' \| 'reject'` | `'global'` |
 
 ### `AkumaCacheModule.register(options)`
 
@@ -262,6 +284,46 @@ Version non-globale du module (meme options que `forRoot`).
 - Avec `failFastOnInit: false` (defaut), l'application NestJS continue de demarrer meme si Redis est temporairement indisponible.
 - Si `host/port` ne sont pas fournis dans les options (ou vides), le module tente `REDIS_HOST` / `REDIS_PORT` depuis l'environnement avant le fallback final local.
 - L'initialisation de `RedisCacheService` est liee explicitement au provider d'options du module (`forRoot` / `forRootAsync`) pour eviter l'utilisation involontaire des valeurs par defaut quand une config est bien fournie.
+
+### Cache tenant-aware
+
+La cle peut etre scopee par tenant avec un prefixe strict:
+
+- Format: `tenant:<tenantId>:<baseKey>`
+- Priorite de resolution du tenant:
+  1. `tenantResolver` passe a `@Cacheable(...)`
+  2. `tenantResolver` configure au module
+  3. header (`tenantHeaderName`, defaut `x-tenant-id`)
+  4. claim utilisateur (`tenantClaimPath`, defaut `tenantId`)
+
+Configuration module:
+
+```ts
+AkumaCacheModule.forRoot({
+  tenantAware: true,
+  tenantHeaderName: 'x-tenant-id',
+  tenantClaimPath: 'tenantId',
+  tenantFallback: 'global', // ou 'reject'
+});
+```
+
+Exemple avec resolver local sur un endpoint:
+
+```ts
+@Get('profile')
+@Cacheable({
+  ttl: 120,
+  tenantResolver: (request: any) => request.user?.tenantId,
+})
+async getProfile() {
+  return this.profileService.get();
+}
+```
+
+Invalidation tenant-aware:
+
+- Par defaut, `@InvalidateCache(..., { scope: 'tenant' })` invalide uniquement le tenant courant.
+- Pour invalider tous les tenants, utiliser `scope: 'global'`.
 
 ### Logs verbose
 

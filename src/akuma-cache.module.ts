@@ -1,6 +1,9 @@
 import { DynamicModule, Module, ModuleMetadata, Provider } from '@nestjs/common';
 import { RedisCacheService } from './services/redis-cache.service';
 
+export type TenantResolver = (request: unknown) => string | undefined;
+export type TenantFallbackStrategy = 'global' | 'reject';
+
 export interface AkumaCacheOptions {
     host?: string;
     port?: number;
@@ -13,6 +16,11 @@ export interface AkumaCacheOptions {
     maxInitRetries?: number;
     retryDelayMs?: number;
     failFastOnInit?: boolean;
+    tenantAware?: boolean;
+    tenantResolver?: TenantResolver;
+    tenantHeaderName?: string;
+    tenantClaimPath?: string;
+    tenantFallback?: TenantFallbackStrategy;
 }
 
 export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
