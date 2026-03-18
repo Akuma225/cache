@@ -205,7 +205,7 @@ async updateUser() {
 
 Options de `@InvalidateCache(patterns, options)`:
 
-- `scope?: 'tenant' | 'global'` (defaut: `tenant`)
+- `scope?: 'tenant' | 'global'` (defaut: `global`)
 - `tenantResolver?: (request) => string | undefined`
 
 Exemple invalidation globale explicite:
@@ -322,7 +322,8 @@ async getProfile() {
 
 Invalidation tenant-aware:
 
-- Par defaut, `@InvalidateCache(..., { scope: 'tenant' })` invalide uniquement le tenant courant.
+- Par defaut, `@InvalidateCache(...)` invalide globalement.
+- Avec `@InvalidateCache(..., { scope: 'tenant' })`, l'invalidation est limitee au tenant courant.
 - Pour invalider tous les tenants, utiliser `scope: 'global'`.
 
 ### Logs verbose

@@ -24,7 +24,7 @@ export function InvalidateCache(patterns: string[], options: InvalidateCacheOpti
             @Optional() @Inject(AKUMA_CACHE_OPTIONS) moduleOptions: AkumaCacheOptions = {},
         ) {
             const runtimeOptions: InvalidateCacheRuntimeOptions = {
-                scope: options.scope ?? 'tenant',
+                scope: options.scope ?? 'global',
                 tenantResolver: options.tenantResolver,
             };
             super(redisService, patterns, verbose, moduleOptions, runtimeOptions);

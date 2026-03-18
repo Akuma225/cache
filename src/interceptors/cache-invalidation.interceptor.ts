@@ -40,7 +40,7 @@ export class AkumaCacheInvalidationInterceptor implements NestInterceptor {
     private async invalidatePatterns(request: HttpRequestLike): Promise<void> {
         for (const pattern of this.patterns) {
             const scopedPattern = scopeInvalidationPattern(pattern, request, {
-                scope: this.options.scope ?? 'tenant',
+                scope: this.options.scope ?? 'global',
                 moduleOptions: this.moduleOptions,
                 tenantResolver: this.options.tenantResolver,
             });

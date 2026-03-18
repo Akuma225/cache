@@ -54,7 +54,7 @@ export function scopeInvalidationPattern(
         return pattern;
     }
 
-    if (options.scope === 'global') {
+    if (options.scope === undefined || options.scope === 'global') {
         return pattern;
     }
 

@@ -116,6 +116,21 @@ describe('cache-key util', () => {
         expect(pattern).toBe('baseKey*');
     });
 
+    it("laisse le pattern intact par defaut (scope global)", () => {
+        const request: HttpRequestLike = {
+            ...baseRequest,
+            headers: { 'x-tenant-id': 'user1' },
+        };
+
+        const pattern = scopeInvalidationPattern('baseKey*', request, {
+            moduleOptions: {
+                tenantAware: true,
+            },
+        });
+
+        expect(pattern).toBe('baseKey*');
+    });
+
     it('respecte un pattern deja scope tenant', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
