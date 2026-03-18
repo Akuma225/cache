@@ -260,6 +260,7 @@ Version non-globale du module (meme options que `forRoot`).
   - delai de base `retryDelayMs`,
   - timeout socket `connectTimeoutMs`.
 - Avec `failFastOnInit: false` (defaut), l'application NestJS continue de demarrer meme si Redis est temporairement indisponible.
+- Si `host/port` ne sont pas fournis dans les options (ou vides), le module tente `REDIS_HOST` / `REDIS_PORT` depuis l'environnement avant le fallback final local.
 
 ### Logs verbose
 

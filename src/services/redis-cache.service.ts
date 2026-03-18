@@ -11,6 +11,8 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     private readonly maxInitRetries: number;
     private readonly retryDelayMs: number;
     private readonly failFastOnInit: boolean;
+    private readonly resolvedHost: string | undefined;
+    private readonly resolvedPort: number | undefined;
     private connectPromise: Promise<void> | null = null;
 
     constructor(
@@ -23,12 +25,20 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         this.maxInitRetries = options.maxInitRetries ?? 5;
         this.retryDelayMs = options.retryDelayMs ?? 250;
         this.failFastOnInit = options.failFastOnInit ?? false;
+        this.resolvedHost = this.resolveHost();
+        this.resolvedPort = this.resolvePort();
 
         this.client = createClient(this.buildClientConfig());
         this.client.on('error', (error: unknown) => {
             const message = error instanceof Error ? error.message : String(error);
             this.logger.warn(`Redis error (${this.getConnectionLabel()}): ${message}`);
         });
+
+        if (!this.options.url && this.resolvedHost === undefined && this.resolvedPort === undefined) {
+            this.logger.warn(
+                'Redis host/port are not provided in AkumaCache options or environment, falling back to 127.0.0.1:6379',
+            );
+        }
     }
 
     async onModuleInit(): Promise<void> {
@@ -140,21 +150,17 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         }
 
         const hasSocketConfig =
-            this.options.host !== undefined ||
-            this.options.port !== undefined ||
+            this.resolvedHost !== undefined ||
+            this.resolvedPort !== undefined ||
             this.options.password !== undefined ||
             this.options.db !== undefined;
 
         if (hasSocketConfig) {
-            const socket: { host?: string; port?: number; connectTimeout: number } = {
+            const socket: { host: string; port: number; connectTimeout: number } = {
+                host: this.resolvedHost ?? '127.0.0.1',
+                port: this.resolvedPort ?? 6379,
                 connectTimeout: this.connectTimeoutMs,
             };
-            if (this.options.host !== undefined) {
-                socket.host = this.options.host;
-            }
-            if (this.options.port !== undefined) {
-                socket.port = this.options.port;
-            }
 
             return {
                 socket,
@@ -206,10 +212,15 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
             return this.maskRedisUrl(this.options.url);
         }
 
-        const hasSocketConfig = this.options.host !== undefined || this.options.port !== undefined;
+        const hasSocketConfig =
+            this.resolvedHost !== undefined ||
+            this.resolvedPort !== undefined ||
+            this.options.password !== undefined ||
+            this.options.db !== undefined;
+
         if (hasSocketConfig) {
-            const host = this.options.host ?? '<default>';
-            const port = this.options.port ?? 6379;
+            const host = this.resolvedHost ?? '<default>';
+            const port = this.resolvedPort ?? 6379;
             return `${host}:${port}`;
         }
 
@@ -232,6 +243,38 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         return new Promise((resolve) => {
             setTimeout(resolve, delayMs);
         });
+    }
+
+    private resolveHost(): string | undefined {
+        if (typeof this.options.host === 'string') {
+            const host = this.options.host.trim();
+            if (host.length > 0) {
+                return host;
+            }
+        }
+
+        const envHost = process.env.REDIS_HOST?.trim();
+        if (envHost) {
+            return envHost;
+        }
+
+        return undefined;
+    }
+
+    private resolvePort(): number | undefined {
+        if (typeof this.options.port === 'number' && Number.isFinite(this.options.port) && this.options.port > 0) {
+            return this.options.port;
+        }
+
+        const envPortRaw = process.env.REDIS_PORT;
+        if (envPortRaw) {
+            const envPort = Number(envPortRaw);
+            if (Number.isFinite(envPort) && envPort > 0) {
+                return envPort;
+            }
+        }
+
+        return undefined;
     }
 
     private debug(message: string): void {

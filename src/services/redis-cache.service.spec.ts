@@ -58,9 +58,27 @@ function createMockRedisClient(overrides?: Partial<MockRedisClient>): {
 
 describe('RedisCacheService', () => {
     const createClientMock = createClient as unknown as jest.Mock;
+    const originalRedisHost = process.env.REDIS_HOST;
+    const originalRedisPort = process.env.REDIS_PORT;
 
     beforeEach(() => {
         jest.clearAllMocks();
+        delete process.env.REDIS_HOST;
+        delete process.env.REDIS_PORT;
+    });
+
+    afterAll(() => {
+        if (originalRedisHost === undefined) {
+            delete process.env.REDIS_HOST;
+        } else {
+            process.env.REDIS_HOST = originalRedisHost;
+        }
+
+        if (originalRedisPort === undefined) {
+            delete process.env.REDIS_PORT;
+        } else {
+            process.env.REDIS_PORT = originalRedisPort;
+        }
     });
 
     it('configure le client avec url en priorite', () => {
@@ -252,5 +270,27 @@ describe('RedisCacheService', () => {
 
         await expect(service.invalidate(['users:1*', 'users:2*'])).resolves.toBe(3);
         expect(mock.del).toHaveBeenCalledTimes(2);
+    });
+
+    it('utilise REDIS_HOST et REDIS_PORT de lenvironnement si options absentes', () => {
+        const { client } = createMockRedisClient();
+        createClientMock.mockReturnValue(client);
+        process.env.REDIS_HOST = 'ci-connect-redis';
+        process.env.REDIS_PORT = '6379';
+
+        const service = new RedisCacheService({
+            db: 1,
+        });
+
+        expect(service).toBeDefined();
+        expect(createClientMock).toHaveBeenCalledWith({
+            socket: {
+                host: 'ci-connect-redis',
+                port: 6379,
+                connectTimeout: 5000,
+            },
+            password: undefined,
+            database: 1,
+        });
     });
 });
