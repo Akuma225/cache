@@ -25,11 +25,18 @@
     "lint:fix": "eslint src/**/*.ts --fix"
   },
   "keywords": [
-    "cache",
-    "redis",
     "nestjs",
-    "interceptor",
+    "redis",
+    "cache",
+    "http-cache",
+    "cache-invalidation",
     "decorator",
+    "interceptor",
+    "tenant-aware",
+    "multi-tenant",
+    "api-performance",
+    "backend",
+    "nodejs",
     "typescript"
   ],
   "author": "Cedric Datcha",
