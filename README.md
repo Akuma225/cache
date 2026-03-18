@@ -23,6 +23,7 @@ import { AkumaCacheModule } from '@akuma225/cache';
 @Module({
   imports: [
     AkumaCacheModule.forRoot({
+      // Priorite: url > host/port/password/db
       host: '127.0.0.1',
       port: 6379,
       // password: 'secret',
@@ -30,6 +31,10 @@ import { AkumaCacheModule } from '@akuma225/cache';
       // url: 'redis://localhost:6379',
       defaultTtl: 3600,
       verbose: false,
+      connectTimeoutMs: 5000,
+      maxInitRetries: 5,
+      retryDelayMs: 250,
+      failFastOnInit: false,
     }),
   ],
 })
@@ -60,6 +65,38 @@ import { AkumaCacheModule, AkumaCacheOptions } from '@akuma225/cache';
   ],
 })
 export class AppModule {}
+```
+
+### Recommandation Docker / compose
+
+Utilisez le hostname du service Redis (pas `127.0.0.1`) :
+
+```yaml
+services:
+  api:
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+```
+
+Exemple module NestJS cote API:
+
+```ts
+AkumaCacheModule.forRoot({
+  host: process.env.REDIS_HOST ?? 'redis',
+  port: Number(process.env.REDIS_PORT ?? 6379),
+  connectTimeoutMs: 5000,
+  maxInitRetries: 10,
+  retryDelayMs: 300,
+  failFastOnInit: false, // ne tue pas l'app si Redis demarre plus tard
+});
 ```
 
 ## Utilisation
@@ -177,10 +214,24 @@ async updateUser() {
 | `url` | `string` | `undefined` |
 | `defaultTtl` | `number` | `3600` |
 | `verbose` | `boolean` | `false` |
+| `connectTimeoutMs` | `number` | `5000` |
+| `maxInitRetries` | `number` | `5` |
+| `retryDelayMs` | `number` | `250` |
+| `failFastOnInit` | `boolean` | `false` |
 
 ### `AkumaCacheModule.register(options)`
 
 Version non-globale du module (meme options que `forRoot`).
+
+### Resilience Redis (demarrage et reseau)
+
+- Priorite de configuration: `url` puis `host/port/password/db`.
+- Si vous fournissez `url` ou `host`, le module ne force pas de fallback implicite vers `127.0.0.1`.
+- En cas de Redis indisponible au boot, le module applique des retries avec backoff exponentiel:
+  - tentative `1..maxInitRetries`,
+  - delai de base `retryDelayMs`,
+  - timeout socket `connectTimeoutMs`.
+- Avec `failFastOnInit: false` (defaut), l'application NestJS continue de demarrer meme si Redis est temporairement indisponible.
 
 ### Logs verbose
 

@@ -9,6 +9,10 @@ export interface AkumaCacheOptions {
     url?: string;
     defaultTtl?: number;
     verbose?: boolean;
+    connectTimeoutMs?: number;
+    maxInitRetries?: number;
+    retryDelayMs?: number;
+    failFastOnInit?: boolean;
 }
 
 export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
