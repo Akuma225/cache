@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { createClient } from 'redis';
-import { AKUMA_CACHE_OPTIONS, AkumaCacheOptions } from '../akuma-cache.module';
+import { AkumaCacheOptions } from '../akuma-cache.module';
 
 @Injectable()
 export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
@@ -15,11 +15,7 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     private readonly resolvedPort: number | undefined;
     private connectPromise: Promise<void> | null = null;
 
-    constructor(
-        @Optional()
-        @Inject(AKUMA_CACHE_OPTIONS)
-        private readonly options: AkumaCacheOptions = {},
-    ) {
+    constructor(private readonly options: AkumaCacheOptions = {}) {
         this.verbose = options.verbose ?? false;
         this.connectTimeoutMs = options.connectTimeoutMs ?? 5000;
         this.maxInitRetries = options.maxInitRetries ?? 5;

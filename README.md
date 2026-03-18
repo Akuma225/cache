@@ -261,6 +261,7 @@ Version non-globale du module (meme options que `forRoot`).
   - timeout socket `connectTimeoutMs`.
 - Avec `failFastOnInit: false` (defaut), l'application NestJS continue de demarrer meme si Redis est temporairement indisponible.
 - Si `host/port` ne sont pas fournis dans les options (ou vides), le module tente `REDIS_HOST` / `REDIS_PORT` depuis l'environnement avant le fallback final local.
+- L'initialisation de `RedisCacheService` est liee explicitement au provider d'options du module (`forRoot` / `forRootAsync`) pour eviter l'utilisation involontaire des valeurs par defaut quand une config est bien fournie.
 
 ### Logs verbose
 

@@ -61,7 +61,11 @@ export class AkumaCacheModule {
     private static createProviders(optionsProvider: Provider): Provider[] {
         return [
             optionsProvider,
-            RedisCacheService,
+            {
+                provide: RedisCacheService,
+                useFactory: (options: AkumaCacheOptions) => new RedisCacheService(options),
+                inject: [AKUMA_CACHE_OPTIONS],
+            },
             {
                 provide: 'CACHE_DEFAULT_TTL',
                 useFactory: (options: AkumaCacheOptions) => options.defaultTtl || 3600,
