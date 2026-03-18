@@ -64,6 +64,15 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         await this.client.set(key, value);
     }
 
+    async cache(key: string, value: unknown, ttl?: number): Promise<void> {
+        if (typeof value === 'string') {
+            await this.set(key, value, ttl);
+            return;
+        }
+
+        await this.set(key, JSON.stringify(value), ttl);
+    }
+
     async delByPattern(pattern: string): Promise<number> {
         await this.ensureConnected();
         const keysToDelete: string[] = [];
@@ -88,6 +97,17 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
 
         this.debug(`Invalidation pattern "${pattern}" deleted ${keysToDelete.length} key(s)`);
         return keysToDelete.length;
+    }
+
+    async invalidate(patterns: string | string[]): Promise<number> {
+        const list = Array.isArray(patterns) ? patterns : [patterns];
+        let totalDeleted = 0;
+
+        for (const pattern of list) {
+            totalDeleted += await this.delByPattern(pattern);
+        }
+
+        return totalDeleted;
     }
 
     private async ensureConnected(): Promise<void> {

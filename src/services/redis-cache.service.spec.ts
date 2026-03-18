@@ -192,4 +192,65 @@ describe('RedisCacheService', () => {
         await expect(Promise.all([getPromise, setPromise])).resolves.toEqual(['cached-value', undefined]);
         expect(mock.connect).toHaveBeenCalledTimes(1);
     });
+
+    it('cache serialise les objets et set en redis', async () => {
+        const { client, mock } = createMockRedisClient({
+            isOpen: true,
+        });
+        createClientMock.mockReturnValue(client);
+
+        const service = new RedisCacheService({
+            host: 'redis',
+            port: 6379,
+        });
+
+        await expect(service.cache('user:1', { id: 1, role: 'admin' }, 60)).resolves.toBeUndefined();
+        expect(mock.setEx).toHaveBeenCalledWith('user:1', 60, JSON.stringify({ id: 1, role: 'admin' }));
+    });
+
+    it('invalidate accepte un pattern unique', async () => {
+        const { client, mock } = createMockRedisClient({
+            isOpen: true,
+        });
+        createClientMock.mockReturnValue(client);
+        mock.scanIterator.mockImplementation(async function* () {
+            yield ['k1', 'k2'];
+        });
+        mock.del.mockResolvedValue(2);
+
+        const service = new RedisCacheService({
+            host: 'redis',
+            port: 6379,
+        });
+
+        await expect(service.invalidate('users*')).resolves.toBe(2);
+        expect(mock.del).toHaveBeenCalledWith(['k1', 'k2']);
+    });
+
+    it('invalidate accepte plusieurs patterns et cumule le resultat', async () => {
+        const { client, mock } = createMockRedisClient({
+            isOpen: true,
+        });
+        createClientMock.mockReturnValue(client);
+
+        let callIndex = 0;
+        mock.scanIterator.mockImplementation(async function* () {
+            callIndex += 1;
+            if (callIndex === 1) {
+                yield ['users:1'];
+                return;
+            }
+            yield ['users:2', 'users:3'];
+        });
+
+        mock.del.mockResolvedValue(1).mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+
+        const service = new RedisCacheService({
+            host: 'redis',
+            port: 6379,
+        });
+
+        await expect(service.invalidate(['users:1*', 'users:2*'])).resolves.toBe(3);
+        expect(mock.del).toHaveBeenCalledTimes(2);
+    });
 });

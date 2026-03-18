@@ -201,6 +201,34 @@ async updateUser() {
 }
 ```
 
+### Utilisation directe dans un service NestJS
+
+En plus des decorateurs, vous pouvez injecter `RedisCacheService` et utiliser des methodes directes:
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { RedisCacheService } from '@akuma225/cache';
+
+@Injectable()
+export class ReferenceDataService {
+  constructor(private readonly cacheService: RedisCacheService) {}
+
+  async warmupSectors(): Promise<void> {
+    await this.cacheService.cache('reference:sectors', { items: [] }, 300);
+  }
+
+  async refreshReferenceData(): Promise<void> {
+    await this.cacheService.invalidate(['reference:*', 'public-reference:*']);
+  }
+}
+```
+
+Methodes disponibles:
+
+- `get(key)` / `set(key, value, ttl?)` (bas niveau)
+- `cache(key, value, ttl?)` (serialise automatiquement les objets)
+- `delByPattern(pattern)` / `invalidate(pattern | pattern[])`
+
 ## API
 
 ### `AkumaCacheModule.forRoot(options)`
