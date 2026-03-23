@@ -1,53 +1,61 @@
 # @akuma225/cache
 
-Module NestJS de cache HTTP basé sur Redis.
+NestJS Redis-based HTTP caching module with cache invalidation and tenant-aware key isolation.
 
-## Sommaire
+![npm version](https://img.shields.io/npm/v/%40akuma225%2Fcache)
+![npm downloads](https://img.shields.io/npm/dw/%40akuma225%2Fcache)
+![release workflow](https://img.shields.io/github/actions/workflow/status/akuma225/cache/publish.yml?branch=master&label=release)
+![license](https://img.shields.io/npm/l/%40akuma225%2Fcache)
 
-- [En bref](#en-bref)
-- [Démarrage rapide (60 secondes)](#démarrage-rapide-60-secondes)
+## Table of Contents
+
+- [Overview](#overview)
+- [Quick Start (60 seconds)](#quick-start-60-seconds)
 - [Installation](#installation)
-- [Prérequis](#prérequis)
+- [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
-- [Utilisation](#utilisation)
+- [Usage](#usage)
 - [API](#api)
+- [Release Process](#release-process)
+- [Commit Convention](#commit-convention)
 - [Scripts](#scripts)
-- [Contribuer](#contribuer)
-- [Licence](#licence)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
+- [License](#license)
 
-## En bref
+## Overview
 
-`@akuma225/cache` permet de:
+`@akuma225/cache` helps you:
 
-- mettre en cache les réponses HTTP avec `@Cacheable()`,
-- invalider facilement des groupes de clés avec `@InvalidateCache()`,
-- isoler les clés par tenant pour les applications multi-tenant (SaaS, B2B),
-- intégrer Redis simplement dans un module NestJS.
+- cache HTTP responses with `@Cacheable()`,
+- invalidate cache key groups with `@InvalidateCache()`,
+- isolate cache keys per tenant for multi-tenant APIs,
+- integrate Redis in a NestJS module with minimal setup.
 
-## Démarrage rapide (60 secondes)
+## Quick Start (60 seconds)
 
-1. Installez le package:
+1. Install the package:
 
 ```bash
 npm install @akuma225/cache
 ```
 
-2. Ajoutez le module dans votre `AppModule`:
+2. Register the module in your `AppModule`:
 
 ```ts
 AkumaCacheModule.forRoot({
   host: '127.0.0.1',
   port: 6379,
   defaultTtl: 3600,
-  // Activez ces options uniquement si votre API est multi-tenant:
+  // Enable these options only for multi-tenant APIs:
   // tenantAware: true,
   // tenantHeaderName: 'x-tenant-id',
   // tenantClaimPath: 'tenantId',
-  // tenantFallback: 'global', // ou 'reject'
+  // tenantFallback: 'global', // or 'reject'
 });
 ```
 
-3. Cachez une route avec `@Cacheable()`:
+3. Cache an endpoint:
 
 ```ts
 @Get()
@@ -63,11 +71,11 @@ async listUsers() {
 npm install @akuma225/cache
 ```
 
-## Prérequis
+## Prerequisites
 
 - Node.js 18+
 - NestJS 10+
-- Une instance Redis accessible
+- Reachable Redis instance
 
 ## Configuration
 
@@ -78,7 +86,7 @@ import { AkumaCacheModule } from '@akuma225/cache';
 @Module({
   imports: [
     AkumaCacheModule.forRoot({
-      // Priorité: url > host/port/password/db
+      // Priority: url > host/port/password/db
       host: '127.0.0.1',
       port: 6379,
       // password: 'secret',
@@ -90,7 +98,7 @@ import { AkumaCacheModule } from '@akuma225/cache';
       maxInitRetries: 5,
       retryDelayMs: 250,
       failFastOnInit: false,
-      // Activez la partie tenant uniquement pour une API multi-tenant:
+      // Enable tenant options only for multi-tenant APIs
       tenantAware: false,
       tenantHeaderName: 'x-tenant-id',
       tenantClaimPath: 'tenantId',
@@ -101,7 +109,7 @@ import { AkumaCacheModule } from '@akuma225/cache';
 export class AppModule {}
 ```
 
-### Configuration asynchrone (`forRootAsync`)
+### Async Configuration (`forRootAsync`)
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -117,7 +125,7 @@ import { AkumaCacheModule, AkumaCacheOptions } from '@akuma225/cache';
       useFactory: (configService: ConfigService): AkumaCacheOptions => {
         const config = configService.get<AkumaCacheOptions>('cache');
         if (!config) {
-          throw new Error('Configuration cache manquante');
+          throw new Error('Missing cache configuration');
         }
         return config;
       },
@@ -127,23 +135,23 @@ import { AkumaCacheModule, AkumaCacheOptions } from '@akuma225/cache';
 export class AppModule {}
 ```
 
-## Utilisation
+## Usage
 
-### Quand utiliser le mode multi-tenant (`tenant-aware`)
+### When to enable tenant-aware mode
 
-Utilisez `tenantAware: true` si plusieurs organisations (tenants) partagent la meme API et que vous devez isoler strictement les données de cache entre elles.
+Use `tenantAware: true` when multiple organizations share one API and cache data must be strictly isolated across tenants.
 
-Cas d'usage typiques:
+Typical use cases:
 
-- application SaaS B2B avec un tenant par client,
-- API mutualisée avec séparation logique des données,
-- risque de collisions de cache entre clients sur les memes routes.
+- B2B SaaS applications with one tenant per customer,
+- shared API runtime with logical tenant data separation,
+- risk of cache key collisions across customers on the same routes.
 
-Quand ne pas l'utiliser:
+Do not use tenant mode when:
 
-- API mono-tenant,
-- API publique sans notion de tenant,
-- besoin explicite d'un cache global partagé entre tous les utilisateurs.
+- the API is single-tenant,
+- the API is public and has no tenant concept,
+- you intentionally need one shared global cache.
 
 ### `@Cacheable()`
 
@@ -161,36 +169,12 @@ export class UsersController {
 }
 ```
 
-Options disponibles:
+Available options:
 
-- `ttl?: number` - TTL de la clé en secondes
-- `cachePrefix?: string` - si renseigné, le préfixe est ajouté devant la clé standard
-- `scope?: 'tenant' | 'global'` - force la portée du cache pour cette route (sinon, suit la configuration du module)
-- `tenantResolver?: (request) => string | undefined` - fonction locale pour résoudre le tenant
-
-#### Options détaillées de `@Cacheable(options)`
-
-| Option | Type | Défaut | Effet |
-| --- | --- | --- | --- |
-| `ttl` | `number` | `defaultTtl` du module | Durée de vie de l'entrée cache en secondes. |
-| `cachePrefix` | `string` | `undefined` | Préfixe la clé standard générée par le module. |
-| `scope` | `'tenant' \| 'global'` | `undefined` | Surcharge la portée par route. Si `undefined`, la route suit le mode module (`tenantAware`). |
-| `tenantResolver` | `(request) => string \| undefined` | `undefined` | Fonction locale prioritaire pour construire une clé multi-tenant. |
-
-Comportement de `cachePrefix`:
-
-- La structure de clé reste identique (env, méthode, URL, hash body/params/query).
-- Seul un préfixe est ajouté devant, ce qui permet de segmenter les clés par domaine/contexte.
-
-Exemple:
-
-```ts
-@Get('report')
-@Cacheable({ ttl: 120, cachePrefix: 'report-' })
-async report() {
-  return this.reportService.generate();
-}
-```
+- `ttl?: number` - key TTL in seconds
+- `cachePrefix?: string` - optional prefix added before the generated key
+- `scope?: 'tenant' | 'global'` - route-level scope override
+- `tenantResolver?: (request) => string | undefined` - route-level tenant resolver
 
 ### `@InvalidateCache()`
 
@@ -202,71 +186,22 @@ import { InvalidateCache } from '@akuma225/cache';
 export class UsersController {
   @Post()
   @InvalidateCache(['users*'])
-  async createUser(@Body() payload: any) {
+  async createUser(@Body() payload: unknown) {
     return this.usersService.create(payload);
   }
 }
 ```
 
-#### Options détaillées de `@InvalidateCache(patterns)`
+`patterns` are Redis glob patterns (not JavaScript regexes).
 
-`patterns` est un tableau de patterns Redis utilisés pour supprimer les clés correspondantes.
+Useful examples:
 
-Important: ce sont des **patterns Redis (glob)**, pas des regex JavaScript.
+- `users*` - keys starting with `users`
+- `*users*` - keys containing `users`
+- `production-GET-/reference-data/sectors*` - API namespace invalidation
+- `report-*-2026*` - prefixed/versioned key family
 
-### Syntaxe des patterns d'invalidation
-
-- `*` : zéro ou plusieurs caractères  
-  ex: `users*`, `*users*`
-- `?` : exactement un caractère  
-  ex: `user-?` matche `user-1` mais pas `user-10`
-- `[abc]` : un caractère parmi la liste  
-  ex: `status-[ad]*` matche `status-a...` ou `status-d...`
-- `[a-z]` : un caractère dans un intervalle  
-  ex: `item-[0-9]*`
-
-### Exemples utiles
-
-- `users*` : invalide toutes les clés qui commencent par `users`
-- `*users*` : invalide toutes les clés qui contiennent `users` (n'importe où)
-- `production-GET-/reference-data/sectors*` : invalide un namespace API précis
-- `report-*-2026*` : invalide une famille de clés versionnées/préfixées
-
-### Bonnes pratiques
-
-- Utiliser des préfixes cohérents dans `cachePrefix` pour cibler facilement (`public-`, `admin-`, etc.).
-- Préférer des patterns spécifiques pour éviter des suppressions trop larges.
-- Si vous utilisez `@Cacheable({ cachePrefix: 'public-' })`, invalidez avec des patterns qui incluent ce préfixe, par exemple `public-*`.
-- Pour invalider une ressource "partout dans la clé", utiliser `*terme*` (ex: `*sectors*`).
-
-Exemple avec plusieurs patterns:
-
-```ts
-@Post(':id')
-@InvalidateCache(['users*', 'profile-*'])
-async updateUser() {
-  return this.usersService.update();
-}
-```
-
-Options de `@InvalidateCache(patterns, options)`:
-
-- `scope?: 'tenant' | 'global'` (défaut: `global`)
-- `tenantResolver?: (request) => string | undefined`
-
-Exemple invalidation globale explicite:
-
-```ts
-@Post('admin/rebuild-cache')
-@InvalidateCache(['users*'], { scope: 'global' })
-async rebuildAllUsersCache() {
-  return { ok: true };
-}
-```
-
-### Utilisation directe dans un service NestJS
-
-En plus des décorateurs, vous pouvez injecter `RedisCacheService` et utiliser des méthodes directes:
+### Direct service usage
 
 ```ts
 import { Injectable } from '@nestjs/common';
@@ -286,17 +221,11 @@ export class ReferenceDataService {
 }
 ```
 
-Méthodes disponibles:
-
-- `get(key)` / `set(key, value, ttl?)` (bas niveau)
-- `cache(key, value, ttl?)` (serialise automatiquement les objets)
-- `delByPattern(pattern)` / `invalidate(pattern | pattern[])`
-
 ## API
 
 ### `AkumaCacheModule.forRoot(options)`
 
-| Option | Type | Défaut |
+| Option | Type | Default |
 | --- | --- | --- |
 | `host` | `string` | `127.0.0.1` |
 | `port` | `number` | `6379` |
@@ -317,123 +246,66 @@ Méthodes disponibles:
 
 ### `AkumaCacheModule.register(options)`
 
-Version non-globale du module (même options que `forRoot`).
+Non-global module registration (same options as `forRoot`).
 
-### Résilience Redis (démarrage et réseau)
+### Redis resilience
 
-Ces options servent a garder votre API stable quand Redis est lent, temporairement indisponible, ou indisponible au démarrage.
-
-| Option | Rôle | Quand l'ajuster |
+| Option | Purpose | When to tune |
 | --- | --- | --- |
-| `connectTimeoutMs` | Temps max d'attente pour établir une connexion Redis. | Augmenter si votre réseau est lent (cloud, VPN, container distant). |
-| `maxInitRetries` | Nombre maximal de tentatives de connexion au démarrage. | Augmenter si Redis démarre après l'API (orchestration, cold start). |
-| `retryDelayMs` | Délai de base entre deux tentatives (backoff exponentiel). | Augmenter pour réduire la pression réseau en cas de panne Redis. |
-| `failFastOnInit` | Si `true`, stoppe l'app si Redis est indisponible au boot. Si `false`, l'app démarre sans cache. | `true` pour un cache critique; `false` pour privilégier la disponibilité de l'API. |
+| `connectTimeoutMs` | Max time to establish Redis connection. | Increase for slower network paths (cloud, VPN, remote container). |
+| `maxInitRetries` | Max retries during startup connection. | Increase when Redis starts later than API. |
+| `retryDelayMs` | Base delay between retries (exponential backoff). | Increase to reduce pressure during outages. |
+| `failFastOnInit` | If `true`, app fails when Redis is unavailable on boot. | Set `true` when cache is critical; keep `false` to maximize API availability. |
 
-Comportement de configuration:
+## Release Process
 
-- Priorité de connexion: `url`, puis `host/port/password/db`.
-- Si `host/port` ne sont pas fournis, le module tente `REDIS_HOST` / `REDIS_PORT`, puis repli local.
-- Les options passées via `forRoot` / `forRootAsync` sont utilisées explicitement pour éviter une initialisation avec des valeurs inattendues.
+Releases are fully automated with `semantic-release` on pushes to `master`.
 
-### Cache multi-tenant (`tenant-aware`)
+For each release run:
 
-Le mode multi-tenant évite qu'un tenant A lise une entrée de cache générée pour un tenant B.
+1. Commit history is analyzed using Conventional Commits.
+2. Next version is calculated with Semantic Versioning:
+   - `fix:` -> patch
+   - `feat:` -> minor
+   - `feat!:` or `BREAKING CHANGE:` -> major
+3. `CHANGELOG.md` is updated automatically.
+4. A GitHub Release is created with generated notes.
+5. The package is published to npm.
 
-Format des clés:
+## Commit Convention
 
-- Format: `tenant:<tenantId>:<baseKey>`
+Use Conventional Commits so release automation can infer the correct version bump.
 
-Résolution du tenant (ordre de priorité):
+Examples:
 
-1. `tenantResolver` passé à `@Cacheable(...)`
-2. `tenantResolver` configuré au module
-3. en-tête HTTP (`tenantHeaderName`, défaut `x-tenant-id`)
-4. claim JWT utilisateur (`tenantClaimPath`, défaut `tenantId`)
-
-Comportement si tenant introuvable (`tenantFallback`):
-
-- `'global'` (défaut): bascule sur un cache global,
-- `'reject'`: refuse le cache multi-tenant pour la requête courante.
-
-Configuration module:
-
-```ts
-AkumaCacheModule.forRoot({
-  tenantAware: true,
-  tenantHeaderName: 'x-tenant-id',
-  tenantClaimPath: 'tenantId',
-  tenantFallback: 'global', // ou 'reject'
-});
-```
-
-Exemple avec fonction locale de résolution sur un endpoint:
-
-```ts
-@Get('profile')
-@Cacheable({
-  ttl: 120,
-  scope: 'tenant',
-  tenantResolver: (request: any) => request.user?.tenantId,
-})
-async getProfile() {
-  return this.profileService.get();
-}
-```
-
-Exemple pour forcer un cache global sur une route même si `tenantAware` est activé au module:
-
-```ts
-@Get('public-catalog')
-@Cacheable({
-  ttl: 300,
-  scope: 'global',
-})
-async getPublicCatalog() {
-  return this.catalogService.list();
-}
-```
-
-Invalidation multi-tenant:
-
-- Par défaut, `@InvalidateCache(...)` invalide globalement.
-- Avec `@InvalidateCache(..., { scope: 'tenant' })`, l'invalidation est limitée au tenant courant.
-- Pour invalider tous les tenants, utiliser `scope: 'global'`.
-
-### Logs verbose
-
-Quand `verbose: true`, le module affiche des logs NestJS pour:
-
-- connexions Redis (ou reconnexions),
-- `cache hit` / `cache miss` (succès/échec de lecture),
-- écritures cache (`set`) et erreurs de lecture/écriture,
-- invalidation par pattern avec le nombre de clés supprimées.
+- `fix(cache): handle redis timeout fallback`
+- `feat(module): add per-route tenant resolver`
+- `feat!: remove deprecated options shape`
+- `refactor(interceptor): simplify cache key composition`
+- `docs(readme): clarify tenant-aware use cases`
 
 ## Scripts
 
 ```bash
 npm run build
 npm test
+npm run test:coverage
 npm run lint
+npm run release:dry
 ```
 
-## Contribuer
+## Contributing
 
-Les contributions sont les bienvenues.
+Contributions are welcome. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for:
 
-Si vous voulez proposer une amélioration:
+- development setup,
+- commit format and examples,
+- pull request checklist.
 
-1. Ouvrez une issue pour discuter du besoin (bug, idée, doc, ergonomie).
-2. Créez une branche dédiée et ajoutez des tests si le comportement change.
-3. Soumettez une Pull Request claire, avec contexte et impact.
+## Changelog
 
-Types de contributions utiles:
+See [`CHANGELOG.md`](./CHANGELOG.md).
 
-- amélioration de la documentation et des exemples,
-- corrections de bugs,
-- optimisation de performance,
-- évolution de l'API et de l'expérience développeur.
-
-## Licence
+## License
 
 MIT

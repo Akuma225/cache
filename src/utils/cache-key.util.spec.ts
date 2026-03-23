@@ -10,7 +10,7 @@ describe('cache-key util', () => {
         body: {},
     };
 
-    it("garde la cle legacy quand tenantAware est desactive", () => {
+    it('keeps the legacy key when tenantAware is disabled', () => {
         const baseKey = buildBaseCacheKey(baseRequest);
         const key = buildCacheKey(baseRequest, {
             cachePrefix: 'api-',
@@ -22,7 +22,7 @@ describe('cache-key util', () => {
         expect(key).toBe(`api-${baseKey}`);
     });
 
-    it('genere des cles differentes pour des tenants differents', () => {
+    it('generates different keys for different tenants', () => {
         const requestTenantA: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'UserA' },
@@ -43,7 +43,7 @@ describe('cache-key util', () => {
         expect(keyA).not.toBe(keyB);
     });
 
-    it('priorise tenantResolver du decorateur sur module/header/claim', () => {
+    it('prioritizes decorator tenantResolver over module/header/claim', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'from-header' },
@@ -62,7 +62,7 @@ describe('cache-key util', () => {
         expect(key).toContain('tenant:from-decorator:');
     });
 
-    it('utilise le fallback global si tenant absent', () => {
+    it('uses global fallback when tenant is missing', () => {
         const key = buildCacheKey(baseRequest, {
             moduleOptions: {
                 tenantAware: true,
@@ -73,7 +73,7 @@ describe('cache-key util', () => {
         expect(key).toContain('tenant:global:');
     });
 
-    it("retourne null si tenantFallback=reject et tenant absent", () => {
+    it('returns null when tenantFallback=reject and tenant is missing', () => {
         const key = buildCacheKey(baseRequest, {
             moduleOptions: {
                 tenantAware: true,
@@ -84,7 +84,7 @@ describe('cache-key util', () => {
         expect(key).toBeNull();
     });
 
-    it("force un cache global quand scope='global' meme si tenantAware=true", () => {
+    it("forces global cache when scope='global' even if tenantAware=true", () => {
         const key = buildCacheKey(
             {
                 ...baseRequest,
@@ -101,7 +101,7 @@ describe('cache-key util', () => {
         expect(key).not.toContain('tenant:');
     });
 
-    it("force un cache tenant quand scope='tenant' meme si tenantAware=false", () => {
+    it("forces tenant cache when scope='tenant' even if tenantAware=false", () => {
         const key = buildCacheKey(
             {
                 ...baseRequest,
@@ -118,7 +118,7 @@ describe('cache-key util', () => {
         expect(key).toContain('tenant:user1:');
     });
 
-    it("scope l'invalidation sur le tenant courant en mode tenant", () => {
+    it('scopes invalidation to the current tenant in tenant mode', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'user1' },
@@ -134,7 +134,7 @@ describe('cache-key util', () => {
         expect(pattern).toBe('tenant:user1:baseKey*');
     });
 
-    it("laisse le pattern intact en mode global", () => {
+    it('keeps the pattern unchanged in global mode', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'user1' },
@@ -150,7 +150,7 @@ describe('cache-key util', () => {
         expect(pattern).toBe('baseKey*');
     });
 
-    it("laisse le pattern intact par defaut (scope global)", () => {
+    it('keeps the pattern unchanged by default (global scope)', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'user1' },
@@ -165,7 +165,7 @@ describe('cache-key util', () => {
         expect(pattern).toBe('baseKey*');
     });
 
-    it('respecte un pattern deja scope tenant', () => {
+    it('keeps an already tenant-scoped pattern unchanged', () => {
         const request: HttpRequestLike = {
             ...baseRequest,
             headers: { 'x-tenant-id': 'user1' },

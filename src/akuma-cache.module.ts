@@ -24,8 +24,8 @@ export interface AkumaCacheOptions {
 }
 
 export interface AkumaCacheAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
-    inject?: any[];
-    useFactory: (...args: any[]) => Promise<AkumaCacheOptions> | AkumaCacheOptions;
+    inject?: Array<string | symbol | Function>;
+    useFactory: (...args: unknown[]) => Promise<AkumaCacheOptions> | AkumaCacheOptions;
 }
 
 export const AKUMA_CACHE_OPTIONS = 'AKUMA_CACHE_OPTIONS';

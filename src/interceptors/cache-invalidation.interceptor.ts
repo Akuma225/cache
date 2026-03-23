@@ -17,7 +17,7 @@ export interface InvalidateCacheRuntimeOptions {
 }
 
 @Injectable()
-export class AkumaCacheInvalidationInterceptor implements NestInterceptor {
+export class AkumaCacheInvalidationInterceptor implements NestInterceptor<unknown, unknown> {
     private readonly logger = new Logger(AkumaCacheInvalidationInterceptor.name);
 
     constructor(
@@ -28,7 +28,7 @@ export class AkumaCacheInvalidationInterceptor implements NestInterceptor {
         private readonly options: InvalidateCacheRuntimeOptions = {},
     ) {}
 
-    intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    intercept(context: ExecutionContext, next: CallHandler<unknown>): Observable<unknown> {
         const request = context.switchToHttp().getRequest<HttpRequestLike>();
         return next.handle().pipe(
             tap(() => {

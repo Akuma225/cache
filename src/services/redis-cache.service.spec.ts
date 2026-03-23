@@ -81,7 +81,7 @@ describe('RedisCacheService', () => {
         }
     });
 
-    it('configure le client avec url en priorite', () => {
+    it('configures the client with url as top priority', () => {
         const { client } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
 
@@ -102,7 +102,7 @@ describe('RedisCacheService', () => {
         });
     });
 
-    it('utilise host/port fournis sans fallback localhost', () => {
+    it('uses provided host/port without localhost fallback', () => {
         const { client } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
 
@@ -123,7 +123,7 @@ describe('RedisCacheService', () => {
         });
     });
 
-    it('retry au boot quand Redis est indisponible puis disponible', async () => {
+    it('retries on boot when Redis is unavailable then available', async () => {
         const { client, mock } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
 
@@ -148,7 +148,7 @@ describe('RedisCacheService', () => {
         expect(mock.connect).toHaveBeenCalledTimes(3);
     });
 
-    it("n'echoue pas au boot si failFastOnInit=false", async () => {
+    it("does not fail at boot when failFastOnInit=false", async () => {
         const { client, mock } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
         mock.connect.mockRejectedValue(new Error('ECONNREFUSED redis:6379'));
@@ -165,7 +165,7 @@ describe('RedisCacheService', () => {
         expect(mock.connect).toHaveBeenCalledTimes(2);
     });
 
-    it("enregistre un handler 'error' des la creation du client", () => {
+    it("registers an 'error' handler when client is created", () => {
         const { client, handlers } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
 
@@ -180,7 +180,7 @@ describe('RedisCacheService', () => {
         expect(() => handlers.error[0](new Error('ECONNREFUSED redis:6379'))).not.toThrow();
     });
 
-    it('partage la meme promesse de connexion en concurrence', async () => {
+    it('shares the same connection promise under concurrency', async () => {
         const { client, mock } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
 
@@ -211,7 +211,7 @@ describe('RedisCacheService', () => {
         expect(mock.connect).toHaveBeenCalledTimes(1);
     });
 
-    it('cache serialise les objets et set en redis', async () => {
+    it('serializes objects and stores them in redis', async () => {
         const { client, mock } = createMockRedisClient({
             isOpen: true,
         });
@@ -226,7 +226,7 @@ describe('RedisCacheService', () => {
         expect(mock.setEx).toHaveBeenCalledWith('user:1', 60, JSON.stringify({ id: 1, role: 'admin' }));
     });
 
-    it('invalidate accepte un pattern unique', async () => {
+    it('invalidate accepts a single pattern', async () => {
         const { client, mock } = createMockRedisClient({
             isOpen: true,
         });
@@ -245,7 +245,7 @@ describe('RedisCacheService', () => {
         expect(mock.del).toHaveBeenCalledWith(['k1', 'k2']);
     });
 
-    it('invalidate accepte plusieurs patterns et cumule le resultat', async () => {
+    it('invalidate accepts multiple patterns and accumulates results', async () => {
         const { client, mock } = createMockRedisClient({
             isOpen: true,
         });
@@ -272,7 +272,7 @@ describe('RedisCacheService', () => {
         expect(mock.del).toHaveBeenCalledTimes(2);
     });
 
-    it('utilise REDIS_HOST et REDIS_PORT de lenvironnement si options absentes', () => {
+    it('uses REDIS_HOST and REDIS_PORT from env when options are missing', () => {
         const { client } = createMockRedisClient();
         createClientMock.mockReturnValue(client);
         process.env.REDIS_HOST = 'ci-connect-redis';

@@ -12,7 +12,7 @@ import { AkumaCacheOptions, TenantResolver } from '../akuma-cache.module';
 import { buildCacheKey, HttpRequestLike } from '../utils/cache-key.util';
 
 @Injectable()
-export class AkumaCacheInterceptor implements NestInterceptor {
+export class AkumaCacheInterceptor implements NestInterceptor<unknown, unknown> {
     private readonly logger = new Logger(AkumaCacheInterceptor.name);
 
     constructor(
@@ -25,7 +25,7 @@ export class AkumaCacheInterceptor implements NestInterceptor {
         private readonly tenantResolver?: TenantResolver,
     ) {}
 
-    async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+    async intercept(context: ExecutionContext, next: CallHandler<unknown>): Promise<Observable<unknown>> {
         const request = context.switchToHttp().getRequest<HttpRequestLike>();
         const key = this.generateKey(request);
         if (!key) {
