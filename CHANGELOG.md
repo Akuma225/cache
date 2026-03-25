@@ -1,3 +1,5 @@
+## [1.0.1](https://github.com/akuma225/cache/compare/v1.0.0...v1.0.1) (2026-03-25)
+
 ## 1.0.0 (2026-03-23)
 
 # Changelog
